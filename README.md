@@ -5,14 +5,14 @@ Tennisball Tracking in Video
 
 
 Convert pre-trained Darknet weights
-'''bash
+```bash
 wget https://pjreddie.com/media/files/yolov3.weights -O data/yolov3.weights
 python convert.py --weights ./data/yolov3.weights --output ./checkpoints/yolov3.tf
-'''
+```
 
 
 
-'''bash
+```bash
 python src/main.py
-'''
+```
 
