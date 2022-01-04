@@ -243,11 +243,11 @@ class Ball_Pos_Estimation():
             x_vel = ( ball_pos[0] - ball_trajectory[-1][0]) / self.dT
             y_vel = ( ball_pos[1] - ball_trajectory[-1][1]) / self.dT
 
-            """print("mean_x_vel", mean_x_vel)
+            print("mean_x_vel", mean_x_vel)
             print("x_vel", x_vel)
 
             print("mean_y_vel", mean_y_vel)
-            print("y_vel", y_vel)"""
+            print("y_vel", y_vel)
 
             if abs(abs(mean_x_vel) - abs(x_vel)) > 5:
                 ball_pos[0] = ball_trajectory[-1][0] + mean_x_vel * self.dT
@@ -255,7 +255,7 @@ class Ball_Pos_Estimation():
             if abs(abs(mean_y_vel) - abs(y_vel)) > 1:
                 ball_pos[1] = ball_trajectory[-1][1] + mean_y_vel * self.dT
 
-            if x_pos_list[-1] >= ball_pos[0]:
+            if x_pos_list[-1] > ball_pos[0]:
                 ball_pos[0] = ball_trajectory[-1][0] + mean_x_vel * self.dT
 
 
@@ -298,20 +298,24 @@ def ball_tracking(image):
 
         fgmask = fgbg.apply(blur, None, 0.3)
 
-        fgmask_erode_1 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
+        #fgmask_erode_1 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
 
-        nlabels, labels, stats_after, centroids = cv2.connectedComponentsWithStats(fgmask_erode_1, connectivity = 8)
+        #fgmask_dila_1 = cv2.dilate(fgmask_erode_1,kernel_dilation_2,iterations = 1)
 
-        if len(stats_after) > 30 :
-            return image_ori, ball_cand_box_left, ball_cand_box_right
+        fgmask_erode_2 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
 
-        for i in range(len(stats_after)):
-            x, y, w, h, area = stats_after[i]
+        fgmask_dila_2 = cv2.dilate(fgmask_erode_2, kernel_dilation_2,iterations = 1)
+
+        nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(fgmask_dila_2, connectivity = 8)
+
+        for i in range(len(stats)):
+            x, y, w, h, area = stats[i]
 
             if area > 3000 : #or area > 600 : # or area < 500 or aspect > 1.2 or aspect < 0.97 : 
                continue
             cv2.rectangle(image_ori, (x, y), (x + w, y + h), (255,0,0), 3)
             
+
             x0, y0, x1, y1 = x, y, x+w, y+h
 
             if y0 < image_ori.shape[0] / 2 :
@@ -321,30 +325,13 @@ def ball_tracking(image):
                     ball_cand_box_left.append([x0, y0, x1, y1])
 
             else :
-                if   50 < (x0 + x1) / 2 < image_ori.shape[1] - (image_ori.shape[1] / 10) :
+                if   30 < (x0 + x1) / 2 < image_ori.shape[1] - (image_ori.shape[1] / 10) :
                     ball_cand_box_right.append([x0, y0, x1, y1])
 
-        #fgmask_dila_1 = cv2.dilate(fgmask_erode_1,kernel_dilation_2,iterations = 1)
-        fgmask_erode_2 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
-        fgmask_dila_2 = cv2.dilate(fgmask_erode_2, kernel_dilation_2,iterations = 1)
+        MOG2_img = cv2.hconcat([fgmask,fgmask_erode_2,fgmask_dila_2])
+        #MOG2_img = cv2.hconcat([fgmask,fgmask_erode_1])
 
-        nlabels, labels, stats_before, centroids = cv2.connectedComponentsWithStats(fgmask_dila_2, connectivity = 8)
-
-        for i in range(len(stats_before)):
-            x, y, w, h, area = stats_before[i]
-
-            if area > 3000 : #or area > 600 : # or area < 500 or aspect > 1.2 or aspect < 0.97 : 
-               continue
-            #cv2.rectangle(image_ori, (x, y), (x + w, y + h), (0,0,255), 3)
-
-
-
-
-        MOG2_img_before = cv2.hconcat([fgmask,fgmask_erode_2,fgmask_dila_2])
-        MOG2_img_after = cv2.hconcat([fgmask,fgmask_erode_1])
-
-        cv2.imshow("MOG2_img_before",MOG2_img_before)
-        cv2.imshow("MOG2_img_after",MOG2_img_after)
+        cv2.imshow("MOG2_img",MOG2_img)
 
         #cv2.imshow("fgmask",fgmask)
         #cv2.imshow("fgmask_erode",fgmask_erode)
@@ -418,7 +405,7 @@ def trans_point(img_ori, point_list):
         new_point.append([x_cen, y_cen])
 
     return new_point
-
+    
 def draw_point_court(img, camera_predict_point_list, padding_x, padding_y):
 
     tennis_court_img = img
@@ -532,8 +519,11 @@ def cal_landing_point(pos_list):
     y = np.array(y0 + vy * t - drag_y * (t ** 2) / 0.057,float)
     z = np.array(z0 + vz * t - (drag_z / 0.057 + 9.8 / 2) * (t ** 2),float)
 
-    #print("x0, y0, z0 : ",x0, y0, z0)
-    #print("vx, vy, vz : ",vx, vy, vz)
+    print("x0, y0, z0 : ",x0, y0, z0)
+
+    print("vx, vy, vz : ",vx, vy, vz)
+
+    print("t_list : ",t_list)
     
     return [np.round(x,3), np.round(y,3), np.round(z,3)]
 

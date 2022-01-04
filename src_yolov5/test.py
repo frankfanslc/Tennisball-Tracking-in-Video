@@ -18,6 +18,7 @@ import torch
 import torch.backends.cudnn as cudnn
 
 from tools import *
+#from tools_backup import *
 
 from yolov5.models.common import DetectMultiBackend
 from yolov5.utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -59,6 +60,11 @@ color = tuple(np.random.randint(low=200, high = 255, size = 3).tolist())
 color = tuple([0,125,255])
 
 recode = False
+start_frame = 800
+video_path = "videos/tennis_video_2/2.mov"
+
+# 2번 frame 1250
+
 
 
 def person_tracking(model, img, img_ori, device):
@@ -94,9 +100,11 @@ def person_tracking(model, img, img_ori, device):
 
                     label = names[c] #None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
 
-                    plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=3)
-
                     x0, y0, x1, y1 = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
+
+                    x0, y0, x1, y1 = x0 - 10, y0 - 10, x1 + 10, y1
+
+                    plot_one_box([x0, y0, x1, y1], im0, label=label, color=colors(c, True), line_thickness=3)
 
                     if y0 < (img_ori.shape[0] / 2) :
                         person_box_left.append([x0, y0, x1, y1])
@@ -114,24 +122,46 @@ def main(input_video):
     
 
     tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
-    tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA)
+
+    tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA) # 1276,600,0
+
+    padding_y = int((810 - tennis_court_img.shape[0]) /2 )
+    padding_x = int((1500 - tennis_court_img.shape[1]) /3)
+
+
+    WHITE = [255,255,255]
+    tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
+
+
 
     cap_main = cv2.VideoCapture(input_video)
 
     fps = int(cap_main.get(cv2.CAP_PROP_FPS))
-
     point_image = np.zeros([408 * 2,720,3], np.uint8) + 255
 
     if recode:
         codec = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter("ball_tracking.mp4", codec, fps, (720,810))
+        out = cv2.VideoWriter("ball_landing_point.mp4", codec, fps, (2144,810))
 
     estimation_ball = Ball_Pos_Estimation()
+
+    disappear_cnt = 0
+    ball_pos_jrajectory = []
+
+    total_frmae = int(cap_main.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    print("total_frmae : ",total_frmae)
+
+    cap_main.set(cv2.CAP_PROP_POS_FRAMES, start_frame) #set start frame number
 
     while cap_main.isOpened():
 
         print("-----------------------------------------------------------------")
         t1 = time.time()
+
+        frame_count = int(cap_main.get(cv2.CAP_PROP_POS_FRAMES))
+
+        print("frame_count : ",frame_count)
 
         ball_box_left = []
         ball_box_right = []
@@ -141,14 +171,14 @@ def main(input_video):
 
         ball_pos = []
 
-
-        ret, frame_main = cap_main.read()
+        ret, frame = cap_main.read()
         
         """frame = frame_main[:,320:960,:]
         frame_left = frame_main[0:360,:590,:]
         frame_right = frame_main[360:,50:,:]"""
 
-        frame = cv2.resize(frame_main, dsize=(720, 405 * 2), interpolation=cv2.INTER_LINEAR)
+        frame = cv2.resize(frame, dsize=(720, 405 * 2), interpolation=cv2.INTER_LINEAR)
+        #frame = cv2.resize(frame, dsize=(1072, 603 * 2), interpolation=cv2.INTER_LINEAR)
 
         frame_left = frame[0 : int(frame.shape[0]/2), : , : ]
         frame_right = frame[int(frame.shape[0]/2): , : , : ]
@@ -201,7 +231,9 @@ def main(input_video):
         print("ball_cen_left = ",ball_cen_left)
         print("ball_cen_right = ",ball_cen_right)
 
-        if len(ball_cen_left) and len(ball_cen_right):
+        print("KF_flag : ",estimation_ball.kf_flag)
+
+        if len(ball_cen_left) and len(ball_cen_right): #2개의 카메라에서 ball이 검출 되었는가?
             fly_check = estimation_ball.check_ball_flying(ball_cen_left, ball_cen_right)
             if (fly_check) == 1:
 
@@ -209,20 +241,26 @@ def main(input_video):
 
                 ball_cand_pos = estimation_ball.get_ball_pos()
 
-                #print("ball_pos_list = ",estimation_ball.ball_pos_list)
+                print("check_ball_fly")
 
                 if estimation_ball.kf_flag:
+                    print("ball_detect_next")
+
 
                     pred_ball_pos = estimation_ball.kf.get_predict()
                     ball_pos = get_prior_ball_pos(ball_cand_pos, pred_ball_pos)
 
                     ball_pos = estimation_ball.ball_vel_check(ball_pos)
 
+                    ball_pos_jrajectory.append(ball_pos)
+
                     estimation_ball.kf.update(ball_pos[0], ball_pos[1], ball_pos[2], dT)
 
                     estimation_ball.ball_trajectory.append([ball_pos])
 
                 else:
+                    print("ball_detect_frist")
+
                     if len(ball_cand_pos) > 1:
                         pass
                         #***************사람 위치와 공 위치 평가 함수******************
@@ -240,31 +278,37 @@ def main(input_video):
 
                         ball_pos = ball_cand_pos[(9 - abs(np.array(ball_cand_pos)[:,0])).argmin()]
 
+                        ball_pos_jrajectory.append(ball_pos)
+
                         estimation_ball.kf = Kalman_filiter(ball_pos[0], ball_pos[1], ball_pos[2], dT)
                         estimation_ball.kf_flag = True
                         estimation_ball.ball_trajectory.append([ball_pos])
 
                     else:
                         ball_pos = ball_cand_pos[0]
+                        ball_pos_jrajectory.append(ball_pos)
 
                         estimation_ball.kf = Kalman_filiter(ball_pos[0], ball_pos[1], ball_pos[2], dT)
                         estimation_ball.kf_flag = True
                         estimation_ball.ball_trajectory.append([ball_pos])
 
             elif (fly_check) == 3:
-                print("setup")
+                print("setup_ball_fly")
                 #estimation_ball.reset_ball()
 
             else : 
-                print("reset3")
+                print("not_detect_fly_ball")
 
                 if estimation_ball.kf_flag == True:
+                    print("ball_predict_next_KF")
                     
                     estimation_ball.kf.predict(dT)
 
                     ball_pos = estimation_ball.kf.get_predict()
 
                     ball_pos = estimation_ball.ball_vel_check(ball_pos)
+
+                    ball_pos_jrajectory.append(ball_pos.tolist())
 
 
                     estimation_ball.ball_trajectory.append([ball_pos])
@@ -273,57 +317,95 @@ def main(input_video):
 
 
 
-                else : estimation_ball.reset_ball()
+                else : 
+                    print("reset_ALL")
+                    estimation_ball.reset_ball()
+                    ball_pos_jrajectory.clear()
 
                 
         else:
-            #print("no ball")
+            print("not ball_detect")
 
-            if estimation_ball.kf_flag:
+            if estimation_ball.kf_flag: #칼만 필터가 있는가?
+                print("ball_predict_next_KF")
+
                 estimation_ball.kf.predict(dT)
 
                 ball_pos = estimation_ball.kf.get_predict()
 
                 ball_pos = estimation_ball.ball_vel_check(ball_pos)
 
+                ball_pos_jrajectory.append(ball_pos.tolist())
 
                 estimation_ball.ball_trajectory.append([ball_pos])
 
                 print("pred_ball_pos = ",ball_pos)
 
-                if ball_pos[2] < 0 :
+                disappear_cnt += 1
+
+                if ball_pos[2] < 0 or disappear_cnt > 4 or  ball_pos[0] > 0 :
+    
+                    print("reset_ALL")
+
                     estimation_ball.reset_ball()
+                    ball_pos_jrajectory.clear()
+                    disappear_cnt = 0
+
 
             else:
-                print("reset2")
+                print("reset_ALL")
                 estimation_ball.reset_ball()
+                ball_pos_jrajectory.clear()
 
         if len(ball_pos):
+            #print("ball_pos_jrajectory = ",ball_pos_jrajectory)
+
+            ball_landing_point = cal_landing_point(ball_pos_jrajectory)
+
+            draw_point_court(tennis_court_img, ball_pos, padding_x, padding_y)
+            draw_landing_point_court(tennis_court_img, ball_landing_point, padding_x, padding_y)
+
             print("ball_pos = ",ball_pos)
-            draw_point_court(tennis_court_img, ball_pos)
+            print("ball_landing_point = ",ball_landing_point)
+
 
         t2 = time.time()
 
 
-        #cv2.imshow('person_tracking_img',person_tracking_img)
-        # cv2.imshow('ball_detect_img',ball_detect_img)
-        cv2.imshow('tennis_court_img',tennis_court_img)
+        cv2.imshow('person_tracking_img',person_tracking_img)
+        cv2.imshow('ball_detect_img',ball_detect_img)
 
-        cv2.imshow('frame_main',frame_main)
+        #cv2.imshow('tennis_court_img',tennis_court_img)
+        #cv2.imshow('frame_main',frame_main)
+
+
+        frame_recode = cv2.hconcat([frame_main,tennis_court_img])
+
+        cv2.imshow('frame_recode',frame_recode)
 
         if recode:
-            cv2.imshow('frame_recode',frame_recode)
 
             print(frame_recode.shape)
             out.write(frame_recode)
 
 
         print("FPS : " , 1/(t2-t1))
+
         key = cv2.waitKey(0)
 
         if key == ord("c") : 
             tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
-            tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA)
+
+            tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA) # 1276,600,0
+
+            padding_y = int((810 - tennis_court_img.shape[0]) /2 )
+            padding_x = int((1500 - tennis_court_img.shape[1]) /3)
+
+
+            WHITE = [255,255,255]
+            tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
+
+            #print(tennis_court_img.shape)
 
         if key == 27 : 
             cap_main.release()
@@ -332,5 +414,4 @@ def main(input_video):
 
 if __name__ == "__main__":
 
-    video_path = "videos/tennis_video_2/7.mov"
     main(video_path)

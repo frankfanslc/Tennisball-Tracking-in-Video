@@ -128,6 +128,8 @@ def main(input_video):
 
     estimation_ball = Ball_Pos_Estimation()
 
+    ball_pos_jrajectory = []
+
     while cap_main.isOpened():
 
         print("-----------------------------------------------------------------")
@@ -140,7 +142,6 @@ def main(input_video):
         ball_cen_right = []
 
         ball_pos = []
-
 
         ret, frame_main = cap_main.read()
         
@@ -218,6 +219,8 @@ def main(input_video):
 
                     ball_pos = estimation_ball.ball_vel_check(ball_pos)
 
+                    ball_pos_jrajectory.append(ball_pos)
+
                     estimation_ball.kf.update(ball_pos[0], ball_pos[1], ball_pos[2], dT)
 
                     estimation_ball.ball_trajectory.append([ball_pos])
@@ -240,12 +243,15 @@ def main(input_video):
 
                         ball_pos = ball_cand_pos[(9 - abs(np.array(ball_cand_pos)[:,0])).argmin()]
 
+                        ball_pos_jrajectory.append(ball_pos)
+
                         estimation_ball.kf = Kalman_filiter(ball_pos[0], ball_pos[1], ball_pos[2], dT)
                         estimation_ball.kf_flag = True
                         estimation_ball.ball_trajectory.append([ball_pos])
 
                     else:
                         ball_pos = ball_cand_pos[0]
+                        ball_pos_jrajectory.append(ball_pos)
 
                         estimation_ball.kf = Kalman_filiter(ball_pos[0], ball_pos[1], ball_pos[2], dT)
                         estimation_ball.kf_flag = True
@@ -266,6 +272,8 @@ def main(input_video):
 
                     ball_pos = estimation_ball.ball_vel_check(ball_pos)
 
+                    ball_pos_jrajectory.append(ball_pos)
+
 
                     estimation_ball.ball_trajectory.append([ball_pos])
 
@@ -273,7 +281,9 @@ def main(input_video):
 
 
 
-                else : estimation_ball.reset_ball()
+                else : 
+                    estimation_ball.reset_ball()
+                    ball_pos_jrajectory.clear()
 
                 
         else:
@@ -286,6 +296,7 @@ def main(input_video):
 
                 ball_pos = estimation_ball.ball_vel_check(ball_pos)
 
+                ball_pos_jrajectory.append(ball_pos)
 
                 estimation_ball.ball_trajectory.append([ball_pos])
 
@@ -293,13 +304,17 @@ def main(input_video):
 
                 if ball_pos[2] < 0 :
                     estimation_ball.reset_ball()
+                ball_pos_jrajectory.clear()
+
 
             else:
                 print("reset2")
                 estimation_ball.reset_ball()
+                ball_pos_jrajectory.clear()
 
         if len(ball_pos):
             print("ball_pos = ",ball_pos)
+            print("ball_pos_jrajectory = ",ball_pos_jrajectory)
             draw_point_court(tennis_court_img, ball_pos)
 
         t2 = time.time()
@@ -332,5 +347,5 @@ def main(input_video):
 
 if __name__ == "__main__":
 
-    video_path = "videos/tennis_video_2/7.mov"
+    video_path = "videos/tennis_video_1/6.mov"
     main(video_path)
