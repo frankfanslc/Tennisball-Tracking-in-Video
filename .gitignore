@@ -5,7 +5,8 @@
 *.mov
 *.mp4
 *.png
-*.record
+*.tar
+*.csv
 
 
 weight/
@@ -16,6 +17,7 @@ videos/
 
 images/
 
+/src_reference
 
 # Packages #
 ############

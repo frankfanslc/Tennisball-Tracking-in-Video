@@ -528,9 +528,9 @@ def cal_landing_point(pos_list):
     #drag_y = 0
     #drag_z = 0
 
-    x = np.array(x0 + vx * t - drag_x * (t ** 2) / 0.057,float)
-    y = np.array(y0 + vy * t - drag_y * (t ** 2) / 0.057,float)
-    z = np.array(z0 + vz * t - (drag_z / 0.057 + 9.8 / 2) * (t ** 2),float)
+    x = np.array(x0 + vx * t - (drag_x * (t ** 2) / 0.057 / 2)  ,float)
+    y = np.array(y0 + vy * t - (drag_y * (t ** 2) / 0.057 / 2) ,float)
+    z = np.array(z0 + vz * t - ((drag_z / 0.057 + 9.8) * (t ** 2) / 2) ,float)
 
     #print("x0, y0, z0 : ",x0, y0, z0)
     #print("vx, vy, vz : ",vx, vy, vz)

@@ -66,7 +66,6 @@ video_path = "videos/tennis_video_2/2.mov"
 # 2번 frame 1250
 
 
-
 def person_tracking(model, img, img_ori, device):
 
         person_box_left = []
