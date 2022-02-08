@@ -25,6 +25,6 @@ python main.py --video_path=your_video_path
 ```
 
 <p align="center">
-<img width="80%" src="https://user-images.githubusercontent.com/67572161/152946889-32039eeb-b8b5-4d9c-b25c-5db22a62e438.gif"/>
+<img width="100%" src="https://user-images.githubusercontent.com/67572161/152946889-32039eeb-b8b5-4d9c-b25c-5db22a62e438.gif"/>
   
 </p>
