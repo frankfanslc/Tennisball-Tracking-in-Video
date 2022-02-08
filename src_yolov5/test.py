@@ -17,8 +17,7 @@ import cv2
 import torch
 import torch.backends.cudnn as cudnn
 
-from tools import *
-#from tools_backup import *
+from test_tools import *
 
 from yolov5.models.common import DetectMultiBackend
 from yolov5.utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -101,7 +100,7 @@ def person_tracking(model, img, img_ori, device):
 
                     x0, y0, x1, y1 = int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])
 
-                    x0, y0, x1, y1 = x0 - 10, y0 - 10, x1 + 10, y1
+                    x0, y0, x1, y1 = x0 - 10, y0 - 10, x1 + 10, y1 + 10
 
                     plot_one_box([x0, y0, x1, y1], im0, label=label, color=colors(c, True), line_thickness=3)
 

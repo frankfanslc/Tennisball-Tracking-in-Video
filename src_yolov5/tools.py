@@ -235,7 +235,7 @@ class Ball_Pos_Estimation():
             ball_trajectory = np.array(self.ball_trajectory).reshape([-1,3])
 
             x_pos_list = ball_trajectory[-3:,0]
-            y_pos_list = ball_trajectory[:,1]
+            y_pos_list = ball_trajectory[-3:,1]
 
             mean_x_vel = np.mean(np.diff(x_pos_list))/ self.dT
             mean_y_vel = np.mean(np.diff(y_pos_list))/ self.dT
@@ -298,7 +298,7 @@ def ball_tracking(image):
 
         fgmask = fgbg.apply(blur, None, 0.3)
 
-        fgmask_erode_1 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
+        fgmask_erode_1 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) 
 
         nlabels, labels, stats_after, centroids = cv2.connectedComponentsWithStats(fgmask_erode_1, connectivity = 8)
 
@@ -324,8 +324,7 @@ def ball_tracking(image):
                 if   50 < (x0 + x1) / 2 < image_ori.shape[1] - (image_ori.shape[1] / 10) :
                     ball_cand_box_right.append([x0, y0, x1, y1])
 
-        #fgmask_dila_1 = cv2.dilate(fgmask_erode_1,kernel_dilation_2,iterations = 1)
-        fgmask_erode_2 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) #오픈 연산이아니라 침식으로 바꾸자
+        """fgmask_erode_2 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) 
         fgmask_dila_2 = cv2.dilate(fgmask_erode_2, kernel_dilation_2,iterations = 1)
 
         nlabels, labels, stats_before, centroids = cv2.connectedComponentsWithStats(fgmask_dila_2, connectivity = 8)
@@ -336,21 +335,20 @@ def ball_tracking(image):
             if area > 3000 : #or area > 600 : # or area < 500 or aspect > 1.2 or aspect < 0.97 : 
                continue
             #cv2.rectangle(image_ori, (x, y), (x + w, y + h), (0,0,255), 3)
-
-
-
-
         MOG2_img_before = cv2.hconcat([fgmask,fgmask_erode_2,fgmask_dila_2])
-        MOG2_img_after = cv2.hconcat([fgmask,fgmask_erode_1])
+
 
         cv2.imshow("MOG2_img_before",MOG2_img_before)
-        cv2.imshow("MOG2_img_after",MOG2_img_after)
+             """
+
+        #MOG2_img_after = cv2.hconcat([fgmask,fgmask_erode_1])
+
+        #cv2.imshow("MOG2_img_after",MOG2_img_after)
 
         #cv2.imshow("fgmask",fgmask)
         #cv2.imshow("fgmask_erode",fgmask_erode)
         #cv2.imshow("fgmask_dila",fgmask_dila)
 
-        
         return image_ori, ball_cand_box_left, ball_cand_box_right
 
 def check_iou(person_box, ball_cand_box):
