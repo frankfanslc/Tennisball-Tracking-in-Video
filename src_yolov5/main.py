@@ -34,7 +34,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description = 'predict_tennis_ball_landing_point')
 
-parser.add_argument('--video_path', type = str, default='videos/tennis_video_1/3.mov', help = 'input your video path')
+parser.add_argument('--video_path', type = str, default='videos/tennis_video_2/2.mov', help = 'input your video path')
 parser.add_argument('--recode', type = bool, default=False, help = 'set recode video')
 parser.add_argument('--debug', type = bool, default=False, help = 'set debug mod')
 
@@ -69,7 +69,7 @@ cudnn.benchmark = True  # set True to speed up constant image size inference
 color = tuple(np.random.randint(low=200, high = 255, size = 3).tolist())
 color = tuple([0,125,255])
 
-start_frame = 0
+start_frame = 2000
 
 def person_tracking(model, img, img_ori, device):
 
@@ -121,6 +121,7 @@ def person_tracking(model, img, img_ori, device):
 
 def main(input_video):
 
+
     ball_esti_pos = []
     dT = 1 / 25
 
@@ -145,6 +146,12 @@ def main(input_video):
         out = cv2.VideoWriter("ball_landing_point.mp4", codec, fps, (2144,810))
 
     estimation_ball = Ball_Pos_Estimation()
+    
+    #칼만필터 초기 생성 후 삭제 --> 초기 생성한 칼만필터는 동작하지 않는 버그가 있음
+    estimation_ball.kf = Kalman_filiter(0, 0, 0, dT)
+    estimation_ball.kf.predict(dT)
+    estimation_ball.reset_ball()
+
 
     disappear_cnt = 0
     ball_pos_jrajectory = []
@@ -189,7 +196,7 @@ def main(input_video):
 
         person_tracking_img, person_box_left_list, person_box_right_list = person_tracking(model, img, img_ori, device)
 
-        ball_detect_img, ball_cand_box_list_left, ball_cand_box_list_right = ball_tracking(frame_mog2)  #get ball cand bbox list
+        ball_detect_img, ball_cand_box_list_left, ball_cand_box_list_right = ball_tracking(frame_mog2, args.debug)  #get ball cand bbox list
 
         if ball_cand_box_list_left:
             ball_box_left = check_iou(person_box_left_list, ball_cand_box_list_left) # get left camera ball bbox list
@@ -344,7 +351,7 @@ def main(input_video):
                 estimation_ball.reset_ball()
                 ball_pos_jrajectory.clear()
 
-        if len(ball_pos):
+        if len(ball_pos) and (ball_pos[0] < - 2.5):
             ball_landing_point = cal_landing_point(ball_pos_jrajectory)
 
             draw_point_court(tennis_court_img, ball_pos, padding_x, padding_y)
@@ -368,7 +375,7 @@ def main(input_video):
         if args.recode:
             out.write(frame_recode)
 
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(0)
 
         if key == ord("c") : 
             tennis_court_img = cv2.imread(path + "/images/tennis_court.png")

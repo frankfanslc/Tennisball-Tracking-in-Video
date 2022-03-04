@@ -23,12 +23,12 @@ class Kalman3D:
     ##-#######################################################################################    
     ## User-level Properties that can be changed for tuning
     ##-#######################################################################################    
-    drag      = 1.0    # Drag felt by all axes (for example, air resistance)
+    drag      = 0    # Drag felt by all axes (for example, air resistance)
     grav      = 9.801  # The constant acceleration on Y-axis
     procNoise = 0.000001    # Process noise -- how good is our model?
     # 0.8: More uncertainty => more weight to prediction  (trust the model more)
     # 0.1: Less uncertainty => more weight to measurement (trust the measurement more)
-    measNoise = 0.000001    # Measurement noise: How good is the tracking?
+    measNoise = 0   # Measurement noise: How good is the tracking?
     ##-#######################################################################################    
 
 

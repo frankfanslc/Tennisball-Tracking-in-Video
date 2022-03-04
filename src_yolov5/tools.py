@@ -249,13 +249,15 @@ class Ball_Pos_Estimation():
             print("mean_y_vel", mean_y_vel)
             print("y_vel", y_vel)"""
 
-            if abs(abs(mean_x_vel) - abs(x_vel)) > 5:
+            if abs(abs(mean_x_vel) - abs(x_vel)) > 5: # 이전 x축 속도평균 보다 현재 속도가 5이상 더 빠를때
                 ball_pos[0] = ball_trajectory[-1][0] + mean_x_vel * self.dT
 
-            if abs(abs(mean_y_vel) - abs(y_vel)) > 1:
+            if abs(abs(mean_y_vel) - abs(y_vel)) > 1: # 이전 y축 속도평균 보다 현재 속도가 1이상 더 빠를때
+
                 ball_pos[1] = ball_trajectory[-1][1] + mean_y_vel * self.dT
 
-            if x_pos_list[-1] >= ball_pos[0]:
+            if x_pos_list[-1] >= ball_pos[0]: #공이 뒤로 움직일때 이전 x 위치에서 평균 속도로 현재 위치 추정
+
                 ball_pos[0] = ball_trajectory[-1][0] + mean_x_vel * self.dT
 
 
@@ -287,7 +289,7 @@ def img_preprocessing(img0, imgsz, stride, pt):
 
     return img, img0
 
-def ball_tracking(image):
+def ball_tracking(image, debug = 0):
 
         ball_cand_box_left = []
         ball_cand_box_right = []
@@ -299,8 +301,9 @@ def ball_tracking(image):
         fgmask = fgbg.apply(blur, None, 0.3)
 
         fgmask_erode_1 = cv2.erode(fgmask, kernel_erosion_1, iterations = 1) 
-
-        nlabels, labels, stats_after, centroids = cv2.connectedComponentsWithStats(fgmask_erode_1, connectivity = 8)
+        fgmask_dila_1 = cv2.dilate(fgmask_erode_1, kernel_dilation_2,iterations = 1)
+        
+        nlabels, labels, stats_after, centroids = cv2.connectedComponentsWithStats(fgmask_dila_1, connectivity = 8)
 
         if len(stats_after) > 30 :
             return image_ori, ball_cand_box_left, ball_cand_box_right
@@ -341,9 +344,10 @@ def ball_tracking(image):
         cv2.imshow("MOG2_img_before",MOG2_img_before)
              """
 
-        #MOG2_img_after = cv2.hconcat([fgmask,fgmask_erode_1])
+        if debug == True:
+            MOG2_img_after = cv2.hconcat([fgmask,fgmask_erode_1,fgmask_dila_1])
 
-        #cv2.imshow("MOG2_img_after",MOG2_img_after)
+            cv2.imshow("MOG2_img_after",MOG2_img_after)
 
         #cv2.imshow("fgmask",fgmask)
         #cv2.imshow("fgmask_erode",fgmask_erode)
