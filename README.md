@@ -4,7 +4,7 @@
 
   1. OS : Ubunut 20.04
   2. CUDA : 11.4
-  3. GPU : GTX 1880ti
+  3. GPU : GTX 1660ti
 
 ## 1. Setup:
 
