@@ -559,3 +559,15 @@ def get_velocity(pos_list):
 
 
 
+def clear_tennis_court_img():
+    tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
+
+    tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA) # 1276,600,0
+
+    padding_y = int((810 - tennis_court_img.shape[0]) /2 )
+    padding_x = int((1500 - tennis_court_img.shape[1]) /3)
+
+    WHITE = [255,255,255]
+    tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
+
+    return tennis_court_img

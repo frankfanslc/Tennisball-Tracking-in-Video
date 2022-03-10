@@ -17,7 +17,7 @@ import cv2
 import torch
 import torch.backends.cudnn as cudnn
 
-from test_tools import *
+from tools import *
 
 from yolov5.models.common import DetectMultiBackend
 from yolov5.utils.datasets import IMG_FORMATS, VID_FORMATS, LoadImages, LoadStreams
@@ -29,6 +29,17 @@ from yolov5.utils.torch_utils import select_device, time_sync
 from yolov5.utils.augmentations import letterbox
 
 from kalman_utils.KFilter import *
+
+import argparse
+
+parser = argparse.ArgumentParser(description = 'predict_tennis_ball_landing_point')
+
+parser.add_argument('--video_path', type = str, default='videos/tennis_video_2/1.mov', help = 'input your video path')
+parser.add_argument('--record', type = bool, default=False, help = 'set record video')
+parser.add_argument('--debug', type = bool, default=False, help = 'set debug mod')
+
+
+args = parser.parse_args()
 
 device = 0
 weights = path + "/yolov5/weights/yolov5m6.pt"
@@ -58,12 +69,7 @@ cudnn.benchmark = True  # set True to speed up constant image size inference
 color = tuple(np.random.randint(low=200, high = 255, size = 3).tolist())
 color = tuple([0,125,255])
 
-recode = False
-start_frame = 800
-video_path = "videos/tennis_video_2/2.mov"
-
-# 2번 frame 1250
-
+start_frame = 0
 
 def person_tracking(model, img, img_ori, device):
 
@@ -115,9 +121,9 @@ def person_tracking(model, img, img_ori, device):
 
 def main(input_video):
 
+
     ball_esti_pos = []
     dT = 1 / 25
-    
 
     tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
 
@@ -130,20 +136,25 @@ def main(input_video):
     WHITE = [255,255,255]
     tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
 
-
-
     cap_main = cv2.VideoCapture(input_video)
 
     fps = int(cap_main.get(cv2.CAP_PROP_FPS))
     point_image = np.zeros([408 * 2,720,3], np.uint8) + 255
 
-    if recode:
+    if args.record:
         codec = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("ball_landing_point.mp4", codec, fps, (2144,810))
 
     estimation_ball = Ball_Pos_Estimation()
+    
+    #칼만필터 초기 생성 후 삭제 --> 초기 생성한 칼만필터는 동작하지 않는 버그가 있음
+    estimation_ball.kf = Kalman_filiter(0, 0, 0, dT)
+    estimation_ball.kf.predict(dT)
+    estimation_ball.reset_ball()
+
 
     disappear_cnt = 0
+    court_img_reset_count = 0
     ball_pos_jrajectory = []
 
     total_frmae = int(cap_main.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -170,21 +181,14 @@ def main(input_video):
         ball_pos = []
 
         ret, frame = cap_main.read()
-        
-        """frame = frame_main[:,320:960,:]
-        frame_left = frame_main[0:360,:590,:]
-        frame_right = frame_main[360:,50:,:]"""
 
         frame = cv2.resize(frame, dsize=(720, 405 * 2), interpolation=cv2.INTER_LINEAR)
-        #frame = cv2.resize(frame, dsize=(1072, 603 * 2), interpolation=cv2.INTER_LINEAR)
 
         frame_left = frame[0 : int(frame.shape[0]/2), : , : ]
         frame_right = frame[int(frame.shape[0]/2): , : , : ]
 
-                
         frame_main = cv2.vconcat([frame_left,frame_right])
-
-        frame_recode = cv2.vconcat([frame_left,frame_right])
+        frame_record = cv2.vconcat([frame_left,frame_right])
 
         frame_mog2 = frame_main.copy()
         frame_yolo_main = frame_main.copy()
@@ -193,7 +197,7 @@ def main(input_video):
 
         person_tracking_img, person_box_left_list, person_box_right_list = person_tracking(model, img, img_ori, device)
 
-        ball_detect_img, ball_cand_box_list_left, ball_cand_box_list_right = ball_tracking(frame_mog2)  #get ball cand bbox list
+        ball_detect_img, ball_cand_box_list_left, ball_cand_box_list_right = ball_tracking(frame_mog2, args.debug)  #get ball cand bbox list
 
         if ball_cand_box_list_left:
             ball_box_left = check_iou(person_box_left_list, ball_cand_box_list_left) # get left camera ball bbox list
@@ -214,20 +218,15 @@ def main(input_video):
 
                 cv2.rectangle(frame_main, (x0, y0), (x1, y1), color, 3)
 
-                if recode == True :
-                    cv2.rectangle(frame_recode, (x0, y0), (x1, y1), color, 3)
-
-                #cv2.circle(point_image,(ball_x_pos, ball_y_pos), 4, color, -1)
-
-                #ball_list.append([ball_x_pos, ball_y_pos])
+                if args.record == True :
+                    cv2.rectangle(frame_record, (x0, y0), (x1, y1), color, 3)
 
         ball_cen_left = trans_point(frame_main, ball_box_left)
         ball_cen_right = trans_point(frame_main, ball_box_right)
 
-            
-
-        print("ball_cen_left = ",ball_cen_left)
-        print("ball_cen_right = ",ball_cen_right)
+        if args.debug:
+            print("ball_cen_left = ",ball_cen_left)
+            print("ball_cen_right = ",ball_cen_right)
 
         print("KF_flag : ",estimation_ball.kf_flag)
 
@@ -235,15 +234,13 @@ def main(input_video):
             fly_check = estimation_ball.check_ball_flying(ball_cen_left, ball_cen_right)
             if (fly_check) == 1:
 
-                
-
                 ball_cand_pos = estimation_ball.get_ball_pos()
 
                 print("check_ball_fly")
 
                 if estimation_ball.kf_flag:
-                    print("ball_detect_next")
 
+                    print("ball_detect_next")
 
                     pred_ball_pos = estimation_ball.kf.get_predict()
                     ball_pos = get_prior_ball_pos(ball_cand_pos, pred_ball_pos)
@@ -319,12 +316,13 @@ def main(input_video):
                     print("reset_ALL")
                     estimation_ball.reset_ball()
                     ball_pos_jrajectory.clear()
-
+                    
+                    court_img_reset_count += 1
                 
         else:
             print("not ball_detect")
 
-            if estimation_ball.kf_flag: #칼만 필터가 있는가?
+            if estimation_ball.kf_flag: #칼만 필터 유뮤 확인
                 print("ball_predict_next_KF")
 
                 estimation_ball.kf.predict(dT)
@@ -349,15 +347,16 @@ def main(input_video):
                     ball_pos_jrajectory.clear()
                     disappear_cnt = 0
 
+                    court_img_reset_count += 1
 
             else:
                 print("reset_ALL")
                 estimation_ball.reset_ball()
                 ball_pos_jrajectory.clear()
 
-        if len(ball_pos):
-            #print("ball_pos_jrajectory = ",ball_pos_jrajectory)
-
+                court_img_reset_count += 1
+                
+        if len(ball_pos) and (ball_pos[0] < - 2.5):
             ball_landing_point = cal_landing_point(ball_pos_jrajectory)
 
             draw_point_court(tennis_court_img, ball_pos, padding_x, padding_y)
@@ -366,44 +365,26 @@ def main(input_video):
             print("ball_pos = ",ball_pos)
             print("ball_landing_point = ",ball_landing_point)
 
+        frame_record = cv2.hconcat([frame_main,tennis_court_img])
+
+        cv2.imshow('frame_record',frame_record)
 
         t2 = time.time()
 
-
-        cv2.imshow('person_tracking_img',person_tracking_img)
-        cv2.imshow('ball_detect_img',ball_detect_img)
-
-        #cv2.imshow('tennis_court_img',tennis_court_img)
-        #cv2.imshow('frame_main',frame_main)
-
-
-        frame_recode = cv2.hconcat([frame_main,tennis_court_img])
-
-        cv2.imshow('frame_recode',frame_recode)
-
-        if recode:
-
-            print(frame_recode.shape)
-            out.write(frame_recode)
-
-
         print("FPS : " , 1/(t2-t1))
 
-        key = cv2.waitKey(0)
+        if args.debug:
+            cv2.imshow('person_tracking_img',person_tracking_img)
+            cv2.imshow('ball_detect_img',ball_detect_img)
 
-        if key == ord("c") : 
-            tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
+        if args.record:
+            out.write(frame_record)
 
-            tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA) # 1276,600,0
+        key = cv2.waitKey(1)
 
-            padding_y = int((810 - tennis_court_img.shape[0]) /2 )
-            padding_x = int((1500 - tennis_court_img.shape[1]) /3)
-
-
-            WHITE = [255,255,255]
-            tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
-
-            #print(tennis_court_img.shape)
+        if key == ord("c") or  court_img_reset_count >50 : 
+            tennis_court_img = clear_tennis_court_img()
+            court_img_reset_count = 0
 
         if key == 27 : 
             cap_main.release()
@@ -412,4 +393,4 @@ def main(input_video):
 
 if __name__ == "__main__":
 
-    main(video_path)
+    main(args.video_path)

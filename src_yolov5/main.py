@@ -34,8 +34,8 @@ import argparse
 
 parser = argparse.ArgumentParser(description = 'predict_tennis_ball_landing_point')
 
-parser.add_argument('--video_path', type = str, default='videos/tennis_video_2/2.mov', help = 'input your video path')
-parser.add_argument('--recode', type = bool, default=False, help = 'set recode video')
+parser.add_argument('--video_path', type = str, default='videos/tennis_video_2/1.mov', help = 'input your video path')
+parser.add_argument('--record', type = bool, default=False, help = 'set record video')
 parser.add_argument('--debug', type = bool, default=False, help = 'set debug mod')
 
 
@@ -69,7 +69,7 @@ cudnn.benchmark = True  # set True to speed up constant image size inference
 color = tuple(np.random.randint(low=200, high = 255, size = 3).tolist())
 color = tuple([0,125,255])
 
-start_frame = 2000
+start_frame = 0
 
 def person_tracking(model, img, img_ori, device):
 
@@ -141,7 +141,7 @@ def main(input_video):
     fps = int(cap_main.get(cv2.CAP_PROP_FPS))
     point_image = np.zeros([408 * 2,720,3], np.uint8) + 255
 
-    if args.recode:
+    if args.record:
         codec = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter("ball_landing_point.mp4", codec, fps, (2144,810))
 
@@ -154,6 +154,7 @@ def main(input_video):
 
 
     disappear_cnt = 0
+    court_img_reset_count = 0
     ball_pos_jrajectory = []
 
     total_frmae = int(cap_main.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -187,7 +188,7 @@ def main(input_video):
         frame_right = frame[int(frame.shape[0]/2): , : , : ]
 
         frame_main = cv2.vconcat([frame_left,frame_right])
-        frame_recode = cv2.vconcat([frame_left,frame_right])
+        frame_record = cv2.vconcat([frame_left,frame_right])
 
         frame_mog2 = frame_main.copy()
         frame_yolo_main = frame_main.copy()
@@ -217,8 +218,8 @@ def main(input_video):
 
                 cv2.rectangle(frame_main, (x0, y0), (x1, y1), color, 3)
 
-                if args.recode == True :
-                    cv2.rectangle(frame_recode, (x0, y0), (x1, y1), color, 3)
+                if args.record == True :
+                    cv2.rectangle(frame_record, (x0, y0), (x1, y1), color, 3)
 
         ball_cen_left = trans_point(frame_main, ball_box_left)
         ball_cen_right = trans_point(frame_main, ball_box_right)
@@ -315,7 +316,8 @@ def main(input_video):
                     print("reset_ALL")
                     estimation_ball.reset_ball()
                     ball_pos_jrajectory.clear()
-
+                    
+                    court_img_reset_count += 1
                 
         else:
             print("not ball_detect")
@@ -345,12 +347,15 @@ def main(input_video):
                     ball_pos_jrajectory.clear()
                     disappear_cnt = 0
 
+                    court_img_reset_count += 1
 
             else:
                 print("reset_ALL")
                 estimation_ball.reset_ball()
                 ball_pos_jrajectory.clear()
 
+                court_img_reset_count += 1
+                
         if len(ball_pos) and (ball_pos[0] < - 2.5):
             ball_landing_point = cal_landing_point(ball_pos_jrajectory)
 
@@ -360,9 +365,9 @@ def main(input_video):
             print("ball_pos = ",ball_pos)
             print("ball_landing_point = ",ball_landing_point)
 
-        frame_recode = cv2.hconcat([frame_main,tennis_court_img])
+        frame_record = cv2.hconcat([frame_main,tennis_court_img])
 
-        cv2.imshow('frame_recode',frame_recode)
+        cv2.imshow('frame_record',frame_record)
 
         t2 = time.time()
 
@@ -372,22 +377,14 @@ def main(input_video):
             cv2.imshow('person_tracking_img',person_tracking_img)
             cv2.imshow('ball_detect_img',ball_detect_img)
 
-        if args.recode:
-            out.write(frame_recode)
+        if args.record:
+            out.write(frame_record)
 
-        key = cv2.waitKey(0)
+        key = cv2.waitKey(1)
 
-        if key == ord("c") : 
-            tennis_court_img = cv2.imread(path + "/images/tennis_court.png")
-
-            tennis_court_img = cv2.resize(tennis_court_img,(0,0), fx=2, fy=2, interpolation = cv2.INTER_AREA) # 1276,600,0
-
-            padding_y = int((810 - tennis_court_img.shape[0]) /2 )
-            padding_x = int((1500 - tennis_court_img.shape[1]) /3)
-
-
-            WHITE = [255,255,255]
-            tennis_court_img= cv2.copyMakeBorder(tennis_court_img.copy(),padding_y,padding_y,padding_x,padding_x,cv2.BORDER_CONSTANT,value=WHITE)
+        if key == ord("c") or  court_img_reset_count >50 : 
+            tennis_court_img = clear_tennis_court_img()
+            court_img_reset_count = 0
 
         if key == 27 : 
             cap_main.release()
