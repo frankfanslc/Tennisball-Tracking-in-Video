@@ -513,7 +513,7 @@ def cal_landing_point(pos_list):
 
     vx, vy, vz = get_velocity(pos_list)
 
-    a = -((0.5 * 0.507 * 1.2041 * np.pi * (0.033 ** 2) * vz ** 2 ) / 0.057 + 9.8 / 2 )
+    a = -((0.5 * 0.507 * 1.2041 * np.pi * (0.033 ** 2) * vz ** 2 ) / 0.057 + 9.8)/2
     b = vz
     c = z0
 

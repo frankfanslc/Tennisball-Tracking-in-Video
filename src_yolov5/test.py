@@ -382,7 +382,7 @@ def main(input_video):
 
         key = cv2.waitKey(1)
 
-        if key == ord("c") or  court_img_reset_count >50 : 
+        if key == ord("c") or  court_img_reset_count > 100 : 
             tennis_court_img = clear_tennis_court_img()
             court_img_reset_count = 0
 
