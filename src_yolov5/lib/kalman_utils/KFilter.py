@@ -1,8 +1,12 @@
 #! /home/drcl_yang/anaconda3/envs/py36/bin/python
-
+from pathlib import Path
 import sys
-sys.path.insert(0, './kalman_utils')
+import os
 
+FILE = Path(__file__).absolute()
+sys.path.append(FILE.parents[0].as_posix())  # add code to path
+
+sys.path.append(str(FILE.parents[0]) + '/lib')  # add code to path
 import numpy as np
 from filter.kalman import Kalman3D
 

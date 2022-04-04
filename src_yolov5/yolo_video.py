@@ -8,7 +8,7 @@ FILE = Path(__file__).absolute()
 sys.path.append(FILE.parents[0].as_posix())  # add code to path
 
 path = str(FILE.parents[0])
-sys.path.insert(0, './yolov5')
+sys.path.insert(0, './lib')
 
 import numpy as np
 import time
@@ -32,7 +32,7 @@ from yolov5.utils.augmentations import letterbox
 from kalman_utils.KFilter import *
 
 device = 0
-weights = path + "/yolov5/weights/yolov5m6.pt"
+weights = path + "/lib/yolov5/weights/yolov5m6.pt"
 imgsz = 640
 conf_thres = 0.25
 iou_thres = 0.45

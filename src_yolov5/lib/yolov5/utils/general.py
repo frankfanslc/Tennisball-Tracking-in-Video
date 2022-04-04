@@ -2,6 +2,15 @@
 """
 General utils
 """
+from pathlib import Path
+import sys
+import os
+
+FILE = Path(__file__).absolute()
+sys.path.append(FILE.parents[0].as_posix())  # add code to path
+
+path = str(FILE.parents[0])
+sys.path.append(path + '/lib')  # add code to path
 
 import contextlib
 import glob
@@ -28,8 +37,8 @@ import torch
 import torchvision
 import yaml
 
-from utils.downloads import gsutil_getsize
-from utils.metrics import box_iou, fitness
+from yolov5.utils.downloads import gsutil_getsize
+from yolov5.utils.metrics import box_iou, fitness
 
 # Settings
 torch.set_printoptions(linewidth=320, precision=5, profile='long')

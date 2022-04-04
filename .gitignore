@@ -1,13 +1,11 @@
-# Compiled source #
-###################
+
+# video && img
 
 *.avi
 *.mov
 *.mp4
-*.png
-*.tar
-*.csv
-
+video/
+videos/
 
 weight/
 weights/
@@ -15,7 +13,6 @@ weights/
 video/
 videos/
 
-images/
 
 /src_reference
 

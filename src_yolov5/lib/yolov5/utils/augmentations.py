@@ -2,6 +2,15 @@
 """
 Image augmentation functions
 """
+from pathlib import Path
+import sys
+import os
+
+FILE = Path(__file__).absolute()
+sys.path.append(FILE.parents[0].as_posix())  # add code to path
+
+path = str(FILE.parents[0])
+sys.path.append(path + '/lib')  # add code to path
 
 import math
 import random
@@ -9,8 +18,8 @@ import random
 import cv2
 import numpy as np
 
-from utils.general import LOGGER, check_version, colorstr, resample_segments, segment2box
-from utils.metrics import bbox_ioa
+from yolov5.utils.general import LOGGER, check_version, colorstr, resample_segments, segment2box
+from yolov5.utils.metrics import bbox_ioa
 
 
 class Albumentations:

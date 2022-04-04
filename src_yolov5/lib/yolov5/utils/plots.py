@@ -17,8 +17,8 @@ import seaborn as sn
 import torch
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.general import clip_coords, increment_path, is_ascii, is_chinese, user_config_dir, xywh2xyxy, xyxy2xywh
-from utils.metrics import fitness
+from yolov5.utils.general import clip_coords, increment_path, is_ascii, is_chinese, user_config_dir, xywh2xyxy, xyxy2xywh
+from yolov5.utils.metrics import fitness
 
 # Settings
 CONFIG_DIR = user_config_dir()  # Ultralytics settings dir
